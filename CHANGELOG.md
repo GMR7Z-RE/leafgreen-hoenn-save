@@ -19,6 +19,6 @@ Initial public release.
 - Pokémon Emerald (Europe), 16 MB GBA ROM
 
 ### Known limitations
-- Saves are only persisted by a periodic timer, so users must wait ~7-8 seconds after pressing Save before powering off.
+- Saves are only persisted by a periodic timer, so you must wait ~7-8 seconds after pressing Save before leaving the game in any way (closing it from the home menu, switching titles, sleep, or powering off).
 - Home menu still shows "Pokémon Leaf Green" with the original icon (custom branding planned for a future version).
 - Ruby, Sapphire, non-USA NSP versions, and Japanese Hoenn ROMs are unconfirmed (expected to work, reports welcome).

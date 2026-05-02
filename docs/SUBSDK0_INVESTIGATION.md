@@ -6,7 +6,7 @@ Investigation log for finding the proper architectural fix for Hoenn saves: maki
 
 ## Key discovery — the cross-module bridge
 
-We've located the **exact code in subsdk0 that fires `event_id = 0x4C`** to main. It's a callback dispatch pattern:
+I've located the **exact code in subsdk0 that fires `event_id = 0x4C`** to main. It's a callback dispatch pattern:
 
 ```asm
 ldr x0, [x_obj, #0x10]    ; x0 = main's callback object (set up at init)
@@ -68,17 +68,17 @@ Each of the 6 fire paths corresponds to a different combination of operand kinds
 - Comparisons against constants `0x12, 0x75, 0xd0, 0xd1, 0x117` (IR opcode codes)
 - Bit checks on `0x6c, 0x70, 0x74` operand info fields
 
-## What this means for our v3c fix
+## What this means for the v3c fix
 
 **Hypothesis**: subsdk0 has HLE detection that recognizes FRLG's save routine machine code during JIT compilation. The detection is pattern-matching on IR operand combinations specific to FRLG's save engine. Hoenn's save routine, written in different code, produces different IR operand combinations that don't match any of fn 0x22e2ac's 6 fire paths.
 
-**To make Hoenn save natively**, we have a few options:
+**To make Hoenn save natively**, there are a few options:
 
-1. **Force fn 0x22e2ac to ALWAYS fire**. If fn 0x22e2ac is called even for Hoenn (just with mismatched conditions), we can patch it to unconditionally take one of the fire paths. Risk: false fires for non-save instructions.
+1. **Force fn 0x22e2ac to ALWAYS fire**. If fn 0x22e2ac is called even for Hoenn (just with mismatched conditions), I can patch it to unconditionally take one of the fire paths. Risk: false fires for non-save instructions.
 
 2. **Patch fn 0x22e2ac's conditions to be more permissive**. NOP some `b.ne`/`b.hi` gates to widen acceptance.
 
-3. **Call fn 0x22e2ac externally**. If Hoenn doesn't even trigger the JIT to dispatch to this vtable slot, no patch inside fn 0x22e2ac will help — we'd need to wire up a separate path.
+3. **Call fn 0x22e2ac externally**. If Hoenn doesn't even trigger the JIT to dispatch to this vtable slot, no patch inside fn 0x22e2ac will help — I'd need to wire up a separate path.
 
 ## Open questions
 
@@ -89,7 +89,7 @@ Each of the 6 fire paths corresponds to a different combination of operand kinds
 ## Next steps
 
 ### Immediate test (low cost)
-Deploy a UDF `#0` trap at subsdk0+0x22e2ac entry. If Hoenn boots and the game crashes, fn 0x22e2ac IS called for Hoenn — meaning patching its internal conditions is viable. If it doesn't crash, the function isn't reached, and we need to investigate the JIT IR pipeline upstream.
+Deploy a UDF `#0` trap at subsdk0+0x22e2ac entry. If Hoenn boots and the game crashes, fn 0x22e2ac IS called for Hoenn — meaning patching its internal conditions is viable. If it doesn't crash, the function isn't reached, and I need to investigate the JIT IR pipeline upstream.
 
 Subsdk0 build_id: `cd3cc7e5082efeca93bd5d39ff3c17b94d63ea50`
 IPS path: `/atmosphere/exefs_patches/<any_name>/cd3cc7e5082efeca93bd5d39ff3c17b94d63ea50.ips`
@@ -111,7 +111,7 @@ EOF
 ### If trap doesn't fire (fn never called for Hoenn)
 - The JIT pipeline doesn't dispatch to this vtable for Hoenn
 - Need to investigate what IR opcodes Hoenn produces vs FRLG
-- This means tracing through subsdk0's IR translator (likely megafunctions in `0xb9070`+ region with the `116dc48` jump table we saw)
+- This means tracing through subsdk0's IR translator (likely megafunctions in `0xb9070`+ region with the `116dc48` jump table I saw)
 - Days of additional RE
 
 ## Architecture notes (reusable for future RE)

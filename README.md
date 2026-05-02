@@ -2,7 +2,7 @@
 
 Make Pokémon **Hoenn** games (Ruby / Sapphire / Emerald) save persistently when loaded via LayeredFS into the official Pokémon Leaf Green NSP on Nintendo Switch.
 
-> **Status: v1 (WIP)** — confirmed working, but uses a periodic save flush that requires waiting **~7-8 seconds** after pressing Save before powering off the Switch. A future version aims to remove that wait once the proper save trigger is identified.
+> **Status: v1 (WIP)** — confirmed working, but uses a periodic save flush that requires waiting **~7-8 seconds** after pressing Save before leaving the game (closing it from the home menu, switching titles, sleep, or powering off). A future version aims to remove that wait once the proper save trigger is identified.
 
 ---
 
@@ -68,10 +68,10 @@ If you test something not on the confirmed list, please open an Issue — would 
 
 1. Play your Hoenn game normally.
 2. Save in-game when you want to save.
-3. **Wait ~7-8 seconds** before powering off the Switch.
-4. Power back on — your save is there under "Continue".
+3. **Wait ~7-8 seconds** before leaving the game in any way — closing it from the home menu, switching to another title, putting the Switch to sleep, or powering off.
+4. Boot back into the game — your save is there under "Continue".
 
-If you power off immediately after pressing Save, the save will not have been captured yet. The patch flushes the emulated Flash buffer to disk on a periodic timer (~7.5s); a save written on the very next tick takes one cycle to be picked up.
+If you exit the game immediately after pressing Save, the save will not have been captured yet. The patch flushes the emulated Flash buffer to disk on a periodic timer (~7.5s) **while the game is running**, so the wait applies to any path that ends the game process — not just power-off.
 
 ## Why the wait?
 
