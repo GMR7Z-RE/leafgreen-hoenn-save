@@ -10,12 +10,9 @@ Make Pokémon **Hoenn** games (Ruby / Sapphire / Emerald) save persistently when
 
 Quick demo on a real Switch — saving inside Pokémon Emerald (loaded via LayeredFS into the Leaf Green NSP), exiting the game, booting back in, and Continue is there with the save loaded.
 
-<video src="assets/demo.mp4" controls width="400" muted playsinline>
-  Your browser does not support inline video playback.
-  <a href="assets/demo.mp4">Click here to download the demo video.</a>
-</video>
+https://raw.githubusercontent.com/GMR7Z-RE/leafgreen-hoenn-save/main/assets/demo.mp4
 
-> If the embedded player above doesn't show on GitHub, [click here to play `assets/demo.mp4` directly](assets/demo.mp4).
+[Direct download / fallback link →](assets/demo.mp4)
 
 ---
 
