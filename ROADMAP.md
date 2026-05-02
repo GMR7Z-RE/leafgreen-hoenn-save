@@ -24,11 +24,11 @@ Tracking improvements, next steps, and feasibility analysis for the project that
 | **v3b — aggressive timer (~1 sec)** | <1 sec | Heavy | Medium (needs stress test) | Trivial |
 | **v3c — subsdk0 chip detection patch** | Instant | Same as FRLG (light) | Low after RE | High (multi-day RE) |
 
-**Feasibility:** All three are feasible. v3a is a single-byte mask change. v3b needs a stress test (play 30 min and watch for the User Break crash signature we saw with full per-tick spam). v3c is the architecturally correct fix and has been mapped at a high level (FlashEmulator at subsdk0+`0x15d6d18`, chip handlers around subsdk0+`0xb43d0`+, per-byte command processor at subsdk0+`0xb9000`/`0xb9070`).
+**Feasibility:** All three are feasible. v3a is a single-byte mask change. v3b needs a stress test (play 30 min and watch for the User Break crash signature I saw with full per-tick spam). v3c is the architecturally correct fix and has been mapped at a high level (FlashEmulator at subsdk0+`0x15d6d18`, chip handlers around subsdk0+`0xb43d0`+, per-byte command processor at subsdk0+`0xb9000`/`0xb9070`).
 
 **v3c plan if pursued:**
 1. Identify the chip state machine's "save complete" detection inside subsdk0
-2. Find what byte sequence FRLG uses (we know it's accepted) vs what Hoenn uses (rejected)
+2. Find what byte sequence FRLG uses (I know it's accepted) vs what Hoenn uses (rejected)
 3. Patch the detector to accept both patterns
 4. With proper detection, the timer in `save_handler` can be removed entirely — save fires naturally on actual save events, just like FRLG
 
@@ -60,12 +60,12 @@ The Switch's `qlaunch` (home menu) reads these at boot, falls back to the NSP's 
 
 #### Tasks
 
-1. **Extract the original control partition** from the NSP. The file `Pokemon Leaf Green [010034D02340E000][v0].nsp` is a PFS0 archive containing the control NCA. We can use `hactool` or `hactoolnet` to dump:
+1. **Extract the original control partition** from the NSP. The file `Pokemon Leaf Green [010034D02340E000][v0].nsp` is a PFS0 archive containing the control NCA. I can use `hactool` or `hactoolnet` to dump:
    - `control.nacp` (binary file with structured fields)
    - All `icon_*.dat` files
 
 2. **Modify the NACP**:
-   - Edit `TitleName` string for each language slot we care about
+   - Edit `TitleName` string for each language slot I want to support
    - Optionally edit `Author` to add credit
    - Tools: `nacptool`, hex editor, or Python struct-based editor (the format is documented at switchbrew)
 
@@ -77,7 +77,7 @@ The Switch's `qlaunch` (home menu) reads these at boot, falls back to the NSP's 
 
 5. **Reboot Switch** — home menu should display the new icon and title
 
-#### Variants we could ship
+#### Variants I could ship
 
 - **Generic GBA Wrapper**: Plain GBA-themed icon, name "GBA Player" or "Game Boy Advance"
 - **Hoenn-specific**: Use Hoenn cover art (Ruby/Sapphire/Emerald), name "Pokémon Hoenn"
@@ -113,7 +113,7 @@ The Switch's `qlaunch` (home menu) reads these at boot, falls back to the NSP's 
 
 **Goal:** Support GameShark / CodeBreaker codes for the GBA games being emulated.
 
-**Feasibility:** Subsdk0 might already have GameShark support (since vanilla LeafGreen supports it via Mystery Gift). If so, we just need to find the input mechanism. If not, requires patching memory writes during emulation.
+**Feasibility:** Subsdk0 might already have GameShark support (since vanilla LeafGreen supports it via Mystery Gift). If so, I just need to find the input mechanism. If not, requires patching memory writes during emulation.
 
 **Priority:** Low.
 
@@ -135,17 +135,17 @@ The Switch's `qlaunch` (home menu) reads these at boot, falls back to the NSP's 
 
 **Tests to run:**
 
-- **Vanilla Pokémon LeafGreen** (FRLG) — does our patch *not* break anything? Confirm it still saves normally.
-- **Pokémon FireRed** — same as LeafGreen. Should work without our patch (and our patch shouldn't break it).
+- **Vanilla Pokémon LeafGreen** (FRLG) — does this patch *not* break anything? Confirm it still saves normally.
+- **Pokémon FireRed** — same as LeafGreen. Should work without this patch (and this patch shouldn't break it).
 - **Pokémon Ruby** — confirmed not tested; likely works same as Emerald.
 - **Pokémon Sapphire** — same.
 - **Pokémon Emerald** — confirmed working ✅
-- **FRLG-engine ROM hacks** (e.g., Pokémon Glazed, FireRed Rocket Edition) — should save naturally without our patch.
-- **Hoenn-engine ROM hacks** (e.g., Pokémon Glazed v9.4 if Hoenn-based, RSE-engine fan games) — should work with our patch.
+- **FRLG-engine ROM hacks** (e.g., Pokémon Glazed, FireRed Rocket Edition) — should save naturally without this patch.
+- **Hoenn-engine ROM hacks** (e.g., Pokémon Glazed v9.4 if Hoenn-based, RSE-engine fan games) — should work with this patch.
 - **Non-Pokémon GBA games** (e.g., Mother 3 fan translation, Pokémon Mystery Dungeon: Red Rescue Team, Mario Kart Super Circuit) — varies by save type:
-  - SRAM games (Mario Kart, F-Zero) → likely don't go through Flash chip emulator at all → our patch may not help
+  - SRAM games (Mario Kart, F-Zero) → likely don't go through Flash chip emulator at all → this patch may not help
   - EEPROM games (Pokémon Pinball) → different path entirely
-  - FLASH128/FLASH64 games (most RPGs) → should work with our patch
+  - FLASH128/FLASH64 games (most RPGs) → should work with this patch
 
 ---
 
@@ -167,17 +167,17 @@ The Switch's `qlaunch` (home menu) reads these at boot, falls back to the NSP's 
 
 **Known issues:**
 
-- The User Break crash at `subsdk0+0x17574c` from the early force-spam testing — what triggers it? The post-save commit chain has *some* assertion or pattern check that fails on aggressive saves. Worth understanding even if our v2/v3 timer avoids it.
-- ASLR-related: our counter is at `main+0x1d4514`, which is a fixed offset from main's load base. Atmosphère's load base is randomized, but the offset is constant, so ADRP+LDR resolves correctly. No issue here, but worth confirming if anyone sees odd counter behavior.
-- Power-off timing: with v2 (60-sec timer), if the user presses Save in-game and immediately power-offs, the save can be lost. v3 reduces this window. v3c eliminates it.
+- The User Break crash at `subsdk0+0x17574c` from the early force-spam testing — what triggers it? The post-save commit chain has *some* assertion or pattern check that fails on aggressive saves. Worth understanding even if the v2/v3 timer avoids it.
+- ASLR-related: the counter is at `main+0x1d4514`, which is a fixed offset from main's load base. Atmosphère's load base is randomized, but the offset is constant, so ADRP+LDR resolves correctly. No issue here, but worth confirming if anyone sees odd counter behavior.
+- Exit timing: with v2 (60-sec timer), if I press Save in-game and immediately leave the game (close, switch titles, sleep, or power off), the save can be lost. v3 reduces this window. v3c eliminates it.
 
 ---
 
 ### Other ideas (parking lot)
 
 - **Touch input** for Switch's touchscreen (some GBA games support stylus via WarioWare Twisted accelerometer or similar — probably not relevant)
-- **Multiplayer / link cable**: Stretch goal. The wrapper has 181 nn::pia networking classes — there's enormous untapped infrastructure here for emulated GBA wireless adapter or link cable. If someone could find the trigger for FRLG's wireless trade UI, we could potentially enable trades between Hoenn games via Switch local wireless. *Speculative.*
-- **Frame rate / performance options**: If subsdk0 is throttled to GBA's 60fps, we could potentially overclock to match host FPS. Out of scope for save fix project, but interesting.
+- **Multiplayer / link cable**: Stretch goal. The wrapper has 181 nn::pia networking classes — there's enormous untapped infrastructure here for emulated GBA wireless adapter or link cable. If the trigger for FRLG's wireless trade UI can be found, this could potentially enable trades between Hoenn games via Switch local wireless. *Speculative.*
+- **Frame rate / performance options**: If subsdk0 is throttled to GBA's 60fps, it might be possible to overclock to match host FPS. Out of scope for the save fix project, but interesting.
 
 ---
 

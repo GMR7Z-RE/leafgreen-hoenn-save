@@ -158,9 +158,9 @@ mov x20, x3                   ; set up broadcast arg
 b   #0x571cc                  ; jump straight into the save event 0x4C internals
 ```
 
-This patch was deployed against the Leaf Green NSP via Atmosphère LayeredFS. The single fire on counter==threshold captures whatever state Hoenn has written to its emulated GBA Flash buffer at that moment. Since Hoenn's in-game save UI writes valid Pokémon save sectors (magic `0x08012025`) to the Flash buffer during play, our patch persists those exact bytes to `LeafGreen_e.sav`.
+This patch was deployed against the Leaf Green NSP via Atmosphère LayeredFS. The single fire on counter==threshold captures whatever state Hoenn has written to its emulated GBA Flash buffer at that moment. Since Hoenn's in-game save UI writes valid Pokémon save sectors (magic `0x08012025`) to the Flash buffer during play, the patch persists those exact bytes to `LeafGreen_e.sav`.
 
-The key insight: the post-save processing in subsdk0's worker thread that crashed all our previous attempts (User Break at `subsdk0+0x17574c`) was caused by **firing save spam every tick**. A single one-shot fire processes cleanly.
+The key insight: the post-save processing in subsdk0's worker thread that crashed all my previous attempts (User Break at `subsdk0+0x17574c`) was caused by **firing save spam every tick**. A single one-shot fire processes cleanly.
 
 ### Counter location
 
@@ -184,7 +184,7 @@ Initial hypotheses tested and rejected:
 
 ### Phase 2: mapping main.elf save chain via UDF traps
 
-Atmosphère converts `udf #0` into a crash report with full register and stack dumps. We used it as a printf:
+Atmosphère converts `udf #0` into a crash report with full register and stack dumps. I used it as a printf:
 
 1. UDF at `WriteSaveFile (0x4a968)` → fired for vanilla LeafGreen, silent for Hoenn → confirmed WSF is the bottleneck.
 2. UDF at `save_handler (0x57014)` → silent for Hoenn → confirmed save chain doesn't fire naturally.
@@ -204,7 +204,7 @@ So Hoenn's `ptr_e8` is uninitialized. Why?
 
 ### Phase 4: chasing the wrong rabbit hole (nn::pia::net::NetFacade)
 
-Looked at fn `0x9dfdc` which writes to `[reg, #0xa0]` — looked exactly like our save_dispatch installer. Found its caller fn `0x97dd8`, then fn `0x8c52c` which contains a 16-byte memcmp gate.
+Looked at fn `0x9dfdc` which writes to `[reg, #0xa0]` — looked exactly like the save_dispatch installer. Found its caller fn `0x97dd8`, then fn `0x8c52c` which contains a 16-byte memcmp gate.
 
 Patched the cbz to always pass — no effect on save behavior. Re-investigated and found the typeinfo string for the vtable holding fn `0x8c52c`: **`N2nn3pia3net9NetFacadeE`** — Nintendo's networking framework. Wrong subsystem entirely.
 
@@ -233,7 +233,7 @@ Continue option appeared in the title menu on next boot. Hoenn save state loaded
 
 ### Phase 8: known limitation (next iteration)
 
-The current patch fires exactly once per game launch (B.NE for exact equality). Subsequent in-game saves are not captured until the user power-cycles the Switch. The fix is to change the comparison from "fires at exact match" to "fires every Nth call" using `TST` against a power-of-2 mask.
+The current patch fires exactly once per game launch (B.NE for exact equality). Subsequent in-game saves are not captured until I power-cycle the Switch. The fix is to change the comparison from "fires at exact match" to "fires every Nth call" using `TST` against a power-of-2 mask.
 
 ```asm
 tst w11, #0x1FFF             ; fires every 0x2000 calls (~60 sec)
@@ -250,19 +250,19 @@ This will be deployed in patch v2.
 - `tools/nso_unpack.py` — extracts and decompresses NSO segments (text/ro/data) using LZ4 raw block format.
 - `tools/nso2elf.py` — wraps decompressed NSO segments into a Ghidra-loadable ELF, preserving `.dynamic` so imports resolve to symbol names.
 - `tools/ips_apply.py` — IPS patcher (used for ROM patches).
-- Python `capstone` — fast scriptable disassembly. Most of our analysis was Python+capstone, not Ghidra.
+- Python `capstone` — fast scriptable disassembly. Most of my analysis was Python+capstone, not Ghidra.
 - Atmosphère crash reports — used as a printf-style debugging channel via strategically placed `udf #0` instructions.
 
 ### Why no Ghidra (mostly)?
-We tried. With a 23 MB subsdk0, auto-analysis takes 15-30 minutes and the results were inconsistent (the user reported many `G`-to-address operations finding nothing even after analysis completed). Capstone-based scripting was faster for targeted searches: pattern-matching ADRP+ADD pairs, finding all `STR Xt, [Xn, #imm]` sites with a specific offset, scanning vtables. We'd switch to Ghidra for decompilation when the task needed it, but most of the 25+ patches we deployed were derived from raw byte patterns.
+I tried. With a 23 MB subsdk0, auto-analysis takes 15-30 minutes and the results were inconsistent — many `G`-to-address operations found nothing even after analysis completed. Capstone-based scripting was faster for targeted searches: pattern-matching ADRP+ADD pairs, finding all `STR Xt, [Xn, #imm]` sites with a specific offset, scanning vtables. I'd switch to Ghidra for decompilation when the task needed it, but most of the 25+ patches I deployed were derived from raw byte patterns.
 
 ### The udf-as-printf pattern
 Atmosphère's exception handler dumps all 29 X registers + stack + return-address chain when a process hits an undefined instruction. Replacing a 4-byte instruction with `00 00 00 00` (`udf #0`) and reading the resulting crash report told us precisely:
 - Whether code reached that point (crash fires or not)
-- All register values at that point (including ASLR'd heap pointers we couldn't compute statically)
+- All register values at that point (including ASLR'd heap pointers I couldn't compute statically)
 - The full call chain back through both modules (main and subsdk0)
 
-This was our most-used diagnostic tool, used in roughly 20 of the patches we deployed. Without it, we'd have needed Twili or a debugger setup, both of which target homebrew, not commercial titles.
+This was my most-used diagnostic tool, used in roughly 20 of the patches I deployed. Without it, I'd have needed Twili or a debugger setup, both of which target homebrew, not commercial titles.
 
 ---
 
@@ -307,7 +307,7 @@ Final IPS contents (build via `tools/build_ips.py` or generate inline):
 1. Boot the Leaf Green NSP — Hoenn ROM loads automatically via LayeredFS
 2. Play through Hoenn's intro (mash A through cutscenes to skip)
 3. Reach a save spot in-game and use the in-game Save UI ("Save complete!" dialog)
-4. **Wait approximately 4 minutes from boot** — our patch fires at `~0x8000` save_handler calls (~4 min at 136 calls/sec), which captures the GBA Flash buffer (now containing your saved state) and writes it to `save:/LeafGreen_e.sav`
+4. **Wait approximately 4 minutes from boot** — the patch fires at `~0x8000` save_handler calls (~4 min at 136 calls/sec), which captures the GBA Flash buffer (now containing your saved state) and writes it to `save:/LeafGreen_e.sav`
 5. Power off the Switch
 6. Boot game again — "Continue" should appear in the title menu, your saved state loads
 
@@ -319,9 +319,9 @@ Final IPS contents (build via `tools/build_ips.py` or generate inline):
 ## 9. Future work
 
 - **v2 patch** — periodic save (every ~60 seconds) so multiple in-game saves are captured per session. Replace `cmp w11, #0x8000; b.ne` with `tst w11, #0x1fff; b.ne`.
-- **Subsdk0 deep-dive** — find subsdk0's "save complete" detector and patch it to recognize Hoenn's Flash command sequences. Would eliminate the need for Part 2 of our patch and let users save naturally via the in-game menu.
+- **Subsdk0 deep-dive** — find subsdk0's "save complete" detector and patch it to recognize Hoenn's Flash command sequences. Would eliminate the need for Part 2 of the patch and let users save naturally via the in-game menu.
 - **Test on Ruby/Sapphire** — these likely work the same as Emerald but should be confirmed.
-- **Test on FRLG-engine ROM hacks** — should not need any patch, but verifying ensures we haven't broken vanilla behavior.
+- **Test on FRLG-engine ROM hacks** — should not need any patch, but verifying ensures the patch hasn't broken vanilla behavior.
 
 ---
 
@@ -329,9 +329,9 @@ Final IPS contents (build via `tools/build_ips.py` or generate inline):
 
 This investigation took ~50+ patch deployments, many SD card eject/insert cycles, and several false leads (NetFacade, the wrong vtable, the Twili dead-end). It would not have been possible without:
 
-- **The Atmosphère project** — both for letting us patch a commercial NSP via exefs_patches, and for the crash report mechanism that became our primary diagnostic tool.
-- **Capstone disassembler** — every static-analysis search we ran depended on it.
-- **The user's patience and willingness to keep iterating** — the actual breakthrough came after 7+ hours of dead ends, when we shifted from chasing the wrong vtable (NetFacade) to systematically searching for `STR Xt, [Xn, #0xe8]` writers.
+- **The Atmosphère project** — both for letting me patch a commercial NSP via exefs_patches, and for the crash report mechanism that became the primary diagnostic tool.
+- **Capstone disassembler** — every static-analysis search I ran depended on it.
+- **Many evenings of iterating** — the actual breakthrough came after 7+ hours of dead ends, when I shifted from chasing the wrong vtable (NetFacade) to systematically searching for `STR Xt, [Xn, #0xe8]` writers.
 
 ---
 

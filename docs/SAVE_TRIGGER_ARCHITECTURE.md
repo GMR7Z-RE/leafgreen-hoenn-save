@@ -1,17 +1,17 @@
 # Why FRLG Saves Instantly, But Hoenn Needs a Timer
 
-A focused note on the architectural reason our v2 Hoenn save patch is a *workaround*, not a true fix — and what a true fix would look like.
+A focused note on the architectural reason my v2 Hoenn save patch is a *workaround*, not a true fix — and what a true fix would look like.
 
 ---
 
 ## The observation
 
 In vanilla LeafGreen on the wrapper:
-- Press Save in-game → "Save complete!" → power off → boot → **Continue is there, instantly**.
+- Press Save in-game → "Save complete!" → leave the game (close, power off, sleep, etc.) → boot → **Continue is there, instantly**.
 
-With our v2 patch on Hoenn (Emerald via LayeredFS):
-- Press Save in-game → "Save complete!" → power off **immediately** → boot → **Continue might NOT be there**.
-- Press Save in-game → wait up to 60 seconds → power off → boot → **Continue is there**.
+With my v2 patch on Hoenn (Emerald via LayeredFS):
+- Press Save in-game → "Save complete!" → leave the game **immediately** → boot → **Continue might NOT be there**.
+- Press Save in-game → wait up to 60 seconds → leave the game → boot → **Continue is there**.
 
 This is unusual. Why does the FRLG case feel "instant" while the Hoenn case feels "delayed"?
 
@@ -59,7 +59,7 @@ subsdk0's chip state machine watches for one specific pattern (FRLG's). When Hoe
 - `BroadcastEvent` is never invoked with `event_id = 0x4C`
 - `save_handler` is called per-frame with `event_id = 1` (the generic per-tick event), which immediately exits via the `b.lo 0x57588` early-return inside save_handler
 - The Hoenn save data sits in subsdk0's Flash buffer forever, never written to `.sav`
-- Power-off → buffer gone → next boot, no save data, no Continue
+- Leaving the game (closing it, sleeping the console in a way that ends the process, or powering off) → buffer gone → next boot, no save data, no Continue
 
 This was confirmed empirically by trapping at the save chain entry points: with vanilla LeafGreen + a UDF trap at `WriteSaveFile`, the trap fires on save-press. With Emerald via LayeredFS + the same UDF trap, it stays silent forever — even when "Save complete!" is displayed in-game.
 
@@ -77,25 +77,25 @@ The save subsystem instance has a field `ptr_e8` (and `ptr_d0->[+0xa0]`) that mu
 ### Layer 2: save trigger event
 Even with state set up, there's no `event_id = 0x4C` event being broadcast for Hoenn (because subsdk0's chip state machine doesn't fire its FRLG-pattern detection). So `save_handler` would just keep returning early on per-tick events.
 
-**Our v1/v2 patch addresses both layers**:
+**My v1/v2 patch addresses both layers**:
 - 4 NOPs in `fn 0x56f60` bypass the gates → ptr_e8 / ptr_d0[+0xa0] get populated even for Hoenn (Layer 1 fixed)
 - Counter logic in `save_handler` artificially forces `event_id = 0x4C` periodically → save chain fires (Layer 2 fixed via timer, not subsdk0 detection)
 
 ---
 
-## Why our v2 patch is a workaround, not a true fix
+## Why my v2 patch is a workaround, not a true fix
 
-The truly elegant fix would be at **Layer 2 in subsdk0**: modify subsdk0's chip state machine to also recognize Hoenn's Sanyo-style command pattern as "save complete". One small patch (perhaps 1-2 instructions) in the right location of subsdk0's chip emulator would give us:
+The truly elegant fix would be at **Layer 2 in subsdk0**: modify subsdk0's chip state machine to also recognize Hoenn's Sanyo-style command pattern as "save complete". One small patch (perhaps 1-2 instructions) in the right location of subsdk0's chip emulator would give:
 
 - **Instant saves** (driven by actual save events, just like FRLG)
-- **Zero risk of save loss** from power-off timing
-- **Zero changes to save_handler** (the timer in our v2 is no longer needed)
+- **Zero risk of save loss** from exit timing — leave the game whenever you want
+- **Zero changes to save_handler** (the timer in v2 is no longer needed)
 
-Our v2 patch instead artificially fires the save chain **every ~60 seconds** by hijacking `save_handler`'s prologue. This works because:
+My v2 patch instead artificially fires the save chain **every ~60 seconds** by hijacking `save_handler`'s prologue. This works because:
 
-- Whatever's in subsdk0's Flash buffer at the moment our patch fires is what gets written to `.sav`
+- Whatever's in subsdk0's Flash buffer at the moment the patch fires is what gets written to `.sav`
 - After a player presses Save in-game, Flash buffer contains valid save data
-- Within 60 seconds, our timer fires, captures Flash → writes `.sav` → commits to NAND
+- Within 60 seconds, the timer fires, captures Flash → writes `.sav` → commits to NAND
 
 ### Trade-offs of the workaround
 
@@ -105,17 +105,17 @@ Our v2 patch instead artificially fires the save chain **every ~60 seconds** by 
 - Single IPS file in `main.elf`, no subsdk0 modification needed
 
 **Cons:**
-- **60-second granularity**: if you save in-game and power-off within 60 sec, save is lost
-- **Wasted work**: even if you didn't save in-game, our patch fires the full WriteSaveFile + Commit cycle every minute, writing 128 KB to NAND. Minor wear over long sessions.
-- **Not "feel-instant"**: FRLG users get sub-second save persistence; Hoenn users get up-to-60-second latency
+- **60-second granularity**: if you save in-game and leave the game (close, switch titles, sleep, or power off) within 60 sec, the save is lost
+- **Wasted work**: even if you didn't save in-game, the patch fires the full WriteSaveFile + Commit cycle every minute, writing 128 KB to NAND. Minor wear over long sessions.
+- **Not "feel-instant"**: FRLG saves are sub-second; Hoenn saves under this patch have up-to-60-second latency
 
 ---
 
 ## What a "true" fix would require
 
-To find subsdk0's FRLG-pattern detection and patch it to also accept Hoenn patterns, we'd need:
+To find subsdk0's FRLG-pattern detection and patch it to also accept Hoenn patterns, I'd need:
 
-1. **Identify the chip state machine** in subsdk0. We've already mapped:
+1. **Identify the chip state machine** in subsdk0. I've already mapped:
    - FlashEmulator instance at heap address `0x15d6d18`
    - Constructor at subsdk0+`0xd600`
    - 98 chip definitions (40 bytes each) starting at subsdk0+`0x145ffc0` in `.data`
@@ -132,7 +132,7 @@ To find subsdk0's FRLG-pattern detection and patch it to also accept Hoenn patte
 
 This is meaningful work — subsdk0 is 18 MB of x64-decompiled-then-recompiled-as-AArch64 emulator code with no symbols, no RTTI for save-related classes, and 8493 indirect function calls through 849 distinct callback addresses. Realistically a few weeks of focused Ghidra-driven analysis.
 
-The v2 timer workaround was the pragmatic choice. Whether it's *enough* depends on how the user feels about the trade-offs.
+The v2 timer workaround was the pragmatic choice. Whether it's *enough* depends on how you feel about the trade-offs.
 
 ---
 
