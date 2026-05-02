@@ -2,6 +2,12 @@
 
 Make Pokémon **Hoenn** games (Ruby / Sapphire / Emerald) save persistently when loaded via LayeredFS into the official Pokémon Leaf Green NSP on Nintendo Switch.
 
+<p align="center">
+  <a href="https://buymeacoffee.com/gmr7z" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60">
+  </a>
+</p>
+
 > **Status: v1 (WIP)** — confirmed working, but uses a periodic save flush that requires waiting **~7-8 seconds** after pressing Save before leaving the game (closing it from the home menu, switching titles, sleep, or powering off). A future version aims to remove that wait once the proper save trigger is identified.
 
 ---
@@ -123,9 +129,15 @@ If you have `subsdk0` reverse-engineering experience and want to help nail the p
 
 ## Support
 
-If this saved you a headache and you want to support the project:
+If this saved you a headache and you want to support the project — finding the proper save fix (no more 7-8 second wait), the icon/title swap, and eventually the link cable / wireless networking experiment — you can throw a coffee my way:
 
-- Buy Me a Coffee: **https://buymeacoffee.com/gmr7z**
+<p align="center">
+  <a href="https://buymeacoffee.com/gmr7z" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="80">
+  </a>
+</p>
+
+<p align="center"><a href="https://buymeacoffee.com/gmr7z"><b>buymeacoffee.com/gmr7z</b></a></p>
 
 The patch and writeups stay free regardless. It just helps justify the late nights spent on the proper-fix and networking experiments.
 
