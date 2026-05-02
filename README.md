@@ -6,6 +6,19 @@ Make Pokémon **Hoenn** games (Ruby / Sapphire / Emerald) save persistently when
 
 ---
 
+## Demo
+
+Quick demo on a real Switch — saving inside Pokémon Emerald (loaded via LayeredFS into the Leaf Green NSP), exiting the game, booting back in, and Continue is there with the save loaded.
+
+<video src="assets/demo.mp4" controls width="400" muted playsinline>
+  Your browser does not support inline video playback.
+  <a href="assets/demo.mp4">Click here to download the demo video.</a>
+</video>
+
+> If the embedded player above doesn't show on GitHub, [click here to play `assets/demo.mp4` directly](assets/demo.mp4).
+
+---
+
 ## The problem
 
 If you swap a Hoenn ROM into the Pokémon Leaf Green NSP via LayeredFS, the game runs fine. The in-game save UI even tells you "Save complete!". But the moment you power off and reboot, **there is no Continue option** — your save is gone.
