@@ -1,0 +1,21 @@
+# macOS metadata
+.DS_Store
+._*
+
+# Editor / IDE
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Reverse engineering artifacts (never push extracted Nintendo binaries)
+*.nso
+*.elf
+*.gba
+*.sav
+*.idb
+*.i64
+
+# Build / scratch
+tmp/
+scratch/
